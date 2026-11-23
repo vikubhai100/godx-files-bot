@@ -23,7 +23,12 @@ else:
     FIREBASE_SERVICE_ACCOUNT = None  # local dev: backend/serviceAccountKey.json path via env
 FIREBASE_SA_PATH = os.getenv("FIREBASE_SA_PATH", "")  # local dev fallback
 
-UPDATES_CHANNEL = os.getenv("UPDATES_CHANNEL", "").strip().lstrip("@")  # button on files; fallback: first channel
+# button on files; fallback: first channel — full URL / @user / koi bhi format chalega
+_uc = os.getenv("UPDATES_CHANNEL", "").strip()
+for _p in ("https://t.me/", "http://t.me/", "t.me/"):
+    if _uc.lower().startswith(_p):
+        _uc = _uc[len(_p):].lstrip("@")
+UPDATES_CHANNEL = _uc.lstrip("@")
 OWNER_NAME = os.getenv("OWNER_NAME", "GOD X MODS")
 BOT_NAME = os.getenv("BOT_NAME", "GOD X FILES")
 

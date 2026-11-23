@@ -2,14 +2,35 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
+def tme_url(target: str) -> str:
+    """'@user' | 'user' | 't.me/user' | 'https://t.me/user' -> 'https://t.me/user'.
+
+    Idempotent — pehle se full URL (ya double-prefixed garbage) ho to bhi
+    clean URL deta hai (double https://t.me/ button bug fix).
+    Invite links (+hash) untouched rehte hain.
+    """
+    t = (target or "").strip()
+    if not t:
+        return ""
+    for _ in range(3):  # repeated https://t.me/https://t.me/... prefixes bhi kha jaaye
+        t = t.split("://")[-1] if "://" in t else t
+        if t.lower().startswith("t.me/"):
+            t = t[len("t.me/"):]
+            continue
+        break
+    t = t.lstrip("@")
+    return f"https://t.me/{t}" if t else ""
+
+
 def t_me_link(username: str, payload: str) -> str:
-    return f"https://t.me/{username}?start={payload}"
+    return f"{tme_url(username)}?start={payload}"
 
 
 def start_kb(updates_channel: str | None) -> InlineKeyboardMarkup:
     rows = []
-    if updates_channel:
-        rows.append([InlineKeyboardButton(text="📢 Join Updates Channel", url=f"https://t.me/{updates_channel}")])
+    url = tme_url(updates_channel or "")
+    if url:
+        rows.append([InlineKeyboardButton(text="📢 Join Updates Channel", url=url)])
     rows.append([InlineKeyboardButton(text="ℹ️ About", callback_data="about"),
                  InlineKeyboardButton(text="🆘 Help", callback_data="help"),
                  InlineKeyboardButton(text="☎️ Support", callback_data="support")])
@@ -28,8 +49,9 @@ def force_sub_kb(channels: list[dict]) -> InlineKeyboardMarkup:
 def file_kb(updates_url: str | None) -> InlineKeyboardMarkup:
     """Buttons on delivered files: auto 'join channel' (hide/unhide via /autosub) + support row."""
     rows = []
-    if updates_url:
-        rows.append([InlineKeyboardButton(text="📢 Join Channel 🔗", url=updates_url)])
+    url = tme_url(updates_url or "")
+    if url:
+        rows.append([InlineKeyboardButton(text="📢 Join Channel 🔗", url=url)])
     rows.append([InlineKeyboardButton(text="☎️ Support", callback_data="support")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -37,7 +59,7 @@ def file_kb(updates_url: str | None) -> InlineKeyboardMarkup:
 def support_kb(users: list[str]) -> InlineKeyboardMarkup:
     """Direct chat buttons for each support-team username."""
     return InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text=f"💬 @{u}", url=f"https://t.me/{u}")] for u in users]
+        inline_keyboard=[[InlineKeyboardButton(text=f"💬 @{u}", url=tme_url(u))] for u in users]
     )
 
 

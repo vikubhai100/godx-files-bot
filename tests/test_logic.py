@@ -114,6 +114,20 @@ def test_pure():
     check("support_kb buttons", skb.inline_keyboard[0][0].text == "💬 @vikubhai01"
           and skb.inline_keyboard[1][0].url == "https://t.me/urlking")
 
+    # tme_url normalizer (double https://t.me/ bug fix)
+    check("tme_url bare", keyboards.tme_url("vikucummunity") == "https://t.me/vikucummunity")
+    check("tme_url @", keyboards.tme_url("@vikucummunity") == "https://t.me/vikucummunity")
+    check("tme_url full url", keyboards.tme_url("https://t.me/vikucummunity") == "https://t.me/vikucummunity")
+    check("tme_url double bug", keyboards.tme_url("https://t.me/https://t.me/vikucummunity") == "https://t.me/vikucummunity")
+    check("tme_url invite +hash", keyboards.tme_url("https://t.me/+abc123") == "https://t.me/+abc123")
+    check("tme_url empty", keyboards.tme_url("") == "" and keyboards.tme_url(None) == "")
+    check("t_me_link clean", keyboards.t_me_link("god_x_mods_files_bot", "file_X")
+          == "https://t.me/god_x_mods_files_bot?start=file_X")
+
+    sk = keyboards.start_kb("https://t.me/vikucummunity")
+    check("start_kb no double prefix", sk.inline_keyboard[0][0].url == "https://t.me/vikucummunity")
+    check("start_kb empty → no row", len(keyboards.start_kb(None).inline_keyboard) == 1)
+
     check("human_dur 600s", core.human_dur(600) == "10 minute(s)")
     check("human_dur 3600s", core.human_dur(3600) == "1 hour(s)")
     check("human_dur 45s", core.human_dur(45) == "45 second(s)")

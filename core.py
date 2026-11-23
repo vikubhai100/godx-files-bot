@@ -70,13 +70,13 @@ def batch_link(bid: str) -> str:
 def _updates_button_url(channels: dict) -> Optional[str]:
     """URL for the auto-sub button: UPDATES_CHANNEL env first, else first channel."""
     if config.UPDATES_CHANNEL:
-        return f"https://t.me/{config.UPDATES_CHANNEL}"
+        return keyboards.tme_url(config.UPDATES_CHANNEL)
     for ch in channels.values():
         if ch.get("username"):
-            return f"https://t.me/{ch['username']}"
+            return keyboards.tme_url(ch["username"])
     for ch in channels.values():
         if ch.get("invite_link"):
-            return ch["invite_link"]
+            return keyboards.tme_url(ch["invite_link"])
     return None
 
 
@@ -103,14 +103,17 @@ async def not_joined_channels(bot: Bot, uid: int) -> list[dict]:
 
 
 def _channel_btn(chat_id: int, ch: dict) -> dict:
-    url = f"https://t.me/{ch['username']}" if ch.get("username") else ch.get("invite_link") or f"https://t.me/{chat_id}"
+    if ch.get("username"):
+        url = keyboards.tme_url(ch["username"])
+    else:
+        url = keyboards.tme_url(ch.get("invite_link") or "") or f"https://t.me/{chat_id}"
     return {"chat_id": chat_id, "title": ch.get("title") or "Channel", "url": url}
 
 
 async def refresh_invite_link(bot: Bot, chat_id: int, ch: dict) -> Optional[str]:
     """(Re)create invite link for a private channel; returns new url or None."""
     if ch.get("username"):
-        return f"https://t.me/{ch['username']}"
+        return keyboards.tme_url(ch["username"])
     try:
         inv = await bot.create_chat_invite_link(chat_id=int(chat_id))
         url = inv.invite_link
