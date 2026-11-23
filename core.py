@@ -153,6 +153,37 @@ async def _send_one(bot: Bot, chat_id: int, f: dict, protect: bool, kb: Optional
         return None
 
 
+# ─── Auto-delete notice (custom text via /setnotice) ─────────────────────────
+
+def human_dur(secs: int) -> str:
+    if secs >= 3600 and secs % 3600 == 0:
+        return f"{secs // 3600} hour(s)"
+    if secs >= 60:
+        return f"{max(1, secs // 60)} minute(s)"
+    return f"{secs} second(s)"
+
+
+def _notice_text(cfg: dict, sent: int, is_batch: bool) -> str:
+    """Custom admin text wins ({time}/{count} placeholders); 'OFF' = no notice; else default."""
+    dur = human_dur(int(cfg.get("autodel_sec") or 0))
+    custom = (cfg.get("notice_text") or "").strip()
+    if custom:
+        if custom.upper() == "OFF":
+            return ""
+        return custom.replace("{time}", dur).replace("{count}", str(sent))
+    if is_batch:
+        return (
+            f"⚠️ <b>Auto-Delete Enabled!</b>\n\n"
+            f"🛡 All {sent} file(s) will be <b>auto-deleted in {dur}</b>.\n"
+            f"📥 Save / forward them now if you need them later."
+        )
+    return (
+        f"⚠️ <b>Auto-Delete Enabled!</b>\n\n"
+        f"🛡 This file will be <b>auto-deleted in {dur}</b>.\n"
+        f"📥 Save / forward it now if you need it later."
+    )
+
+
 async def schedule_autodelete(bot: Bot, chat_id: int, msg_ids: list[int], seconds: int, notice_id: Optional[int]) -> None:
     async def _job():
         await asyncio.sleep(seconds)
@@ -181,15 +212,10 @@ async def deliver_file(bot: Bot, uid: int, f: dict) -> bool:
     notice_id = None
     secs = int(cfg.get("autodel_sec") or 0)
     if secs > 0:
-        mins = max(1, secs // 60)
-        warn = await bot.send_message(
-            uid,
-            f"⚠️ <b>Auto-Delete Enabled!</b>\n\n"
-            f"🛡 This file will be <b>auto-deleted in {mins} minute(s)</b>.\n"
-            f"📥 Save / forward it now if you need it later.",
-            parse_mode="HTML",
-        )
-        notice_id = warn.message_id
+        text = _notice_text(cfg, sent=1, is_batch=False)
+        if text:
+            warn = await bot.send_message(uid, text, parse_mode="HTML")
+            notice_id = warn.message_id
         await schedule_autodelete(bot, uid, [msg.message_id], secs, notice_id)
     return True
 
@@ -217,13 +243,12 @@ async def deliver_batch(bot: Bot, uid: int, ids: list[str]) -> int:
         await asyncio.sleep(0.35)  # flood-safe
     secs = int(cfg.get("autodel_sec") or 0)
     if secs > 0 and sent_msgs:
-        mins = max(1, secs // 60)
-        warn = await bot.send_message(
-            uid,
-            f"⚠️ <b>Auto-Delete Enabled!</b>\n\n🛡 All {sent} file(s) will be auto-deleted in {mins} minute(s).",
-            parse_mode="HTML",
-        )
-        await schedule_autodelete(bot, uid, sent_msgs, secs, warn.message_id)
+        text = _notice_text(cfg, sent=sent, is_batch=True)
+        if text:
+            warn = await bot.send_message(uid, text, parse_mode="HTML")
+            await schedule_autodelete(bot, uid, sent_msgs, secs, warn.message_id)
+        else:
+            await schedule_autodelete(bot, uid, sent_msgs, secs, None)
     return sent
 
 

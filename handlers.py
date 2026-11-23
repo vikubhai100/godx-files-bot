@@ -154,7 +154,7 @@ async def cb_help(c: CallbackQuery):
         "2️⃣ Saare channels join karo 📢\n"
         "3️⃣ <b>✅ Verify &amp; Get File</b> dabao\n"
         "4️⃣ File aa jayegi 📥 (turant save karo — auto-delete ho sakti hai)\n\n"
-        f"⚠️ Problem? Owner se contact karo: <b>{config.OWNER_NAME}</b>",
+        "⚠️ Problem? <b>☎️ Support</b> button dabao ya <code>/support</code> likho.",
         parse_mode="HTML",
     )
 
@@ -167,9 +167,40 @@ async def cmd_help(m: Message):
         "2️⃣ Saare channels join karo 📢\n"
         "3️⃣ <b>✅ Verify &amp; Get File</b> dabao\n"
         "4️⃣ File aa jayegi 📥 (turant save karo — auto-delete ho sakti hai)\n\n"
-        f"⚠️ Problem? Owner se contact karo: <b>{config.OWNER_NAME}</b>",
+        "⚠️ Problem? <b>☎️ Support</b> button dabao ya <code>/support</code> likho.",
         parse_mode="HTML",
     )
+
+
+# ─── Support team ────────────────────────────────────────────────────────────
+
+async def _send_support(dest) -> None:
+    """dest: anything with .answer() (Message)."""
+    users = await db.get_support_users()
+    if users:
+        await dest.answer(
+            "☎️ <b>Support Team</b>\n\n"
+            "Koi problem ya file link issue? Sidha support team se baat karo 👇",
+            reply_markup=keyboards.support_kb(users),
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+        )
+    else:
+        await dest.answer(
+            f"☎️ <b>Support</b>\n\nProblem? Owner se contact karo: <b>{config.OWNER_NAME}</b>",
+            parse_mode="HTML",
+        )
+
+
+@router.message(Command("support"))
+async def cmd_support(m: Message):
+    await _send_support(m)
+
+
+@router.callback_query(F.data == "support")
+async def cb_support(c: CallbackQuery):
+    await c.answer()
+    await _send_support(c.message)
 
 
 @router.message(Command("about"))

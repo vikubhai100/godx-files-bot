@@ -165,7 +165,16 @@ DEFAULT_CONFIG = {
     "protect": False,         # protect_content (no forward/save)
     "autodel_sec": config.AUTO_DELETE_SECONDS,
     "welcome": "",
+    "notice_text": "",        # custom auto-delete notice; "" = default text, "OFF" = no notice msg
 }
+
+
+async def get_support_users() -> list[str]:
+    return await aget("settings/support_users") or []
+
+
+async def set_support_users(users: list[str]) -> None:
+    await aset("settings/support_users", users)
 
 
 async def get_config() -> dict:
@@ -204,3 +213,9 @@ async def bootstrap_admin(uid: int) -> None:
 async def all_admin_ids() -> set[int]:
     ids = await aget("settings/admin_ids") or []
     return set(config.ADMIN_IDS) | {int(i) for i in ids}
+
+
+async def remove_admin(uid: int) -> None:
+    ids = await aget("settings/admin_ids") or []
+    ids = [i for i in ids if int(i) != uid]
+    await aset("settings/admin_ids", ids)

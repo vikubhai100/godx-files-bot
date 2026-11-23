@@ -233,6 +233,134 @@ async def cmd_welcome(m: Message, command: CommandObject):
     await m.answer("✅ Welcome text set!")
 
 
+@router.message(Command("setnotice"))
+async def cmd_setnotice(m: Message, command: CommandObject):
+    if not await is_admin(m.from_user.id):
+        return await deny(m)
+    text = (command.args or "").strip()
+    cur = (await db.get_config()).get("notice_text", "")
+    if not text:
+        state = "🔕 OFF (notice band)" if cur.upper() == "OFF" else (f"custom:\n\n{html.escape(cur)}" if cur else "default text")
+        return await m.answer(
+            "⚠️ <b>Auto-delete notice text</b>\n\n"
+            f"Abhi: <b>{state}</b>\n\n"
+            "Usage:\n"
+            "<code>/setnotice ⚠️ File {time} me delete ho jayegi. Jaldi save karo!</code>\n"
+            "<code>/setnotice default</code> — default text wapas\n"
+            "<code>/setnotice off</code> — notice message band (file silently delete hogi)\n\n"
+            "Placeholders: <code>{time}</code> = delete time, <code>{count}</code> = files. HTML allowed.",
+            parse_mode="HTML",
+        )
+    if text.lower() == "off":
+        await db.update_config({"notice_text": "OFF"})
+        return await m.answer(
+            "🔕 Auto-delete <b>notice band</b> — files ab bina notice ke delete hongi.\n"
+            "(Auto-delete timer waisa hi chalega: /autodel)", parse_mode="HTML",
+        )
+    if text.lower() == "default":
+        await db.update_config({"notice_text": ""})
+        return await m.answer("✅ Notice <b>default text</b> pe wapas.", parse_mode="HTML")
+    text = text[:1024]
+    await db.update_config({"notice_text": text})
+    cfg = await db.get_config()
+    preview = core._notice_text(cfg, sent=1, is_batch=False)
+    await m.answer(f"✅ <b>Notice text set!</b>\n\n<b>Preview:</b>\n{preview}", parse_mode="HTML")
+
+
+@router.message(Command("setsupport"))
+async def cmd_setsupport(m: Message, command: CommandObject):
+    if not await is_admin(m.from_user.id):
+        return await deny(m)
+    import re
+    arg = (command.args or "").strip()
+    if not arg:
+        cur = await db.get_support_users()
+        listing = ", ".join("@" + u for u in cur) or "khali (default owner text dikhega)"
+        return await m.answer(
+            f"☎️ <b>Support team abhi:</b> {listing}\n\n"
+            "Usage: <code>/setsupport @user1 @user2</code>\n"
+            "<code>/setsupport off</code> — team hatao",
+            parse_mode="HTML",
+        )
+    if arg.lower() == "off":
+        await db.set_support_users([])
+        return await m.answer("✅ Support team hata di — <code>/support</code> ab default owner text dikhayega.", parse_mode="HTML")
+    users = list(dict.fromkeys(u.lower() for u in re.findall(r"@?([A-Za-z0-9_]{4,32})", arg)))
+    if not users:
+        return await m.answer("❌ Valid username nahi mila. Example: <code>/setsupport @vikubhai01</code>", parse_mode="HTML")
+    await db.set_support_users(users)
+    await m.answer(
+        f"✅ <b>Support team set:</b> {', '.join('@' + u for u in users)}\n\n"
+        "☎️ Support button ab /start aur har delivered file pe in logon ka link dikhayega.",
+        reply_markup=keyboards.support_kb(users),
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+    )
+
+
+# ─── Admin management ────────────────────────────────────────────────────────
+
+@router.message(Command("addadmin"))
+async def cmd_addadmin(m: Message, command: CommandObject, bot: Bot):
+    if not await is_admin(m.from_user.id):
+        return await deny(m)
+    arg = (command.args or "").strip()
+    if not arg:
+        return await m.answer("Usage: <code>/addadmin 123456789</code> ya <code>/addadmin @username</code>", parse_mode="HTML")
+    if arg.lstrip("-").isdigit():
+        uid = int(arg)
+    elif arg.startswith("@"):
+        try:
+            chat = await bot.get_chat(arg)
+        except Exception as e:
+            return await m.answer(
+                f"❌ {html.escape(arg)} resolve nahi hua.\n"
+                "User ko bot me <b>/start</b> karke <b>/myid</b> bhejwao, phir ID se add karo:\n"
+                "<code>/addadmin &lt;id&gt;</code>",
+                parse_mode="HTML",
+            )
+        if chat.type != "private":
+            return await m.answer("❌ Ye user nahi, chat hai — user ki numeric ID use karo.", parse_mode="HTML")
+        uid = chat.id
+    else:
+        return await m.answer("Usage: <code>/addadmin 123456789</code> ya <code>/addadmin @username</code>", parse_mode="HTML")
+    await db.bootstrap_admin(uid)
+    await m.answer(f"✅ <b>Admin added!</b>\n👑 🆔 <code>{uid}</code> ab admin hai.", parse_mode="HTML")
+
+
+@router.message(Command("admins"))
+async def cmd_admins(m: Message):
+    if not await is_admin(m.from_user.id):
+        return await deny(m)
+    env_ids = sorted(config.ADMIN_IDS)
+    db_ids = [int(i) for i in (await db.aget("settings/admin_ids") or [])]
+    lines = ["👑 <b>Admin list:</b>\n"]
+    for uid in env_ids:
+        lines.append(f"• <code>{uid}</code> (env)")
+    for uid in db_ids:
+        if uid not in env_ids:
+            lines.append(f"• <code>{uid}</code>")
+    await m.answer("\n".join(lines), parse_mode="HTML")
+
+
+@router.message(Command("deladmin"))
+async def cmd_deladmin(m: Message, command: CommandObject):
+    if not await is_admin(m.from_user.id):
+        return await deny(m)
+    arg = (command.args or "").strip()
+    if not arg.lstrip("-").isdigit():
+        return await m.answer("Usage: <code>/deladmin 123456789</code>", parse_mode="HTML")
+    uid = int(arg)
+    if uid in config.ADMIN_IDS:
+        return await m.answer(
+            "⚠️ Ye <b>env admin</b> hai — bot se nahi hatega.\n"
+            "Coolify → Environment Variables → <code>ADMIN_IDS</code> se hatao.",
+            parse_mode="HTML",
+        )
+    await db.remove_admin(uid)
+    await m.answer(f"✅ Admin <code>{uid}</code> removed.", parse_mode="HTML")
+
+
 # ─── Bans ────────────────────────────────────────────────────────────────────
 
 @router.message(Command("ban"))

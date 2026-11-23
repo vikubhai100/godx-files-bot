@@ -103,9 +103,26 @@ def test_pure():
                                  {"chat_id": 2, "title": "B", "url": "https://t.me/b"}])
     check("force_sub_kb rows", len(kb.inline_keyboard) == 3 and kb.inline_keyboard[-1][0].callback_data == "verify")
 
-    check("file_kb None when no url", keyboards.file_kb(None) is None)
+    check("file_kb support-only when no url", (kb_none := keyboards.file_kb(None)) is not None
+          and len(kb_none.inline_keyboard) == 1
+          and kb_none.inline_keyboard[0][0].callback_data == "support")
     kb = keyboards.file_kb("https://t.me/godxmods")
     check("file_kb join button", kb.inline_keyboard[0][0].text == "📢 Join Channel 🔗")
+    check("file_kb support row", kb.inline_keyboard[-1][0].callback_data == "support")
+
+    skb = keyboards.support_kb(["vikubhai01", "urlking"])
+    check("support_kb buttons", skb.inline_keyboard[0][0].text == "💬 @vikubhai01"
+          and skb.inline_keyboard[1][0].url == "https://t.me/urlking")
+
+    check("human_dur 600s", core.human_dur(600) == "10 minute(s)")
+    check("human_dur 3600s", core.human_dur(3600) == "1 hour(s)")
+    check("human_dur 45s", core.human_dur(45) == "45 second(s)")
+
+    check("notice default text", "auto-deleted in 10 minute(s)" in core._notice_text({"autodel_sec": 600}, sent=1, is_batch=False))
+    check("notice custom + {time}", core._notice_text({"autodel_sec": 600, "notice_text": "File {time} me jayegi!"}, 1, False)
+          == "File 10 minute(s) me jayegi!")
+    check("notice OFF = empty", core._notice_text({"autodel_sec": 600, "notice_text": "OFF"}, 1, False) == "")
+    check("notice batch default", "All 3 file(s)" in core._notice_text({"autodel_sec": 600}, sent=3, is_batch=True))
 
     limited = any(core.rate_limited(5550001) for _ in range(config.UPLOAD_RATE_LIMIT + 1))
     check("rate limit trips after N", limited)

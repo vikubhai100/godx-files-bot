@@ -8,8 +8,9 @@ File-hosting + force-subscribe Telegram bot (@DOWNLOADFILEM1NX_BOT jaisa): owner
 - 🔗 File link (`t.me/god_x_mods_files_bot?start=file_<id>`) → force-join → verify → instant delivery
 - 📦 Batch links (`?start=batch_<id>`) — ek link me multiple files
 - 📢 Har file pe auto **"Join Channel"** button (admin hide/unhide kar sakte hain)
-- ⚠️ Auto-delete notice + countdown warning
-- 🆔 `/myid`, `/help`, `/about`
+- ☎️ **Support team** — `/support` ya Support button (har file + /start pe) → direct chat links
+- ⚠️ Auto-delete notice — **admin custom text** set kar sakta hai (`{time}` placeholder ke saath)
+- 🆔 `/myid`, `/help`, `/about`, `/support`
 
 **Owner / Admin**
 - 📤 Kisi bhi file (document/video/audio/photo/voice/animation/sticker) ko bot ko bhejo → turant share link
@@ -19,6 +20,9 @@ File-hosting + force-subscribe Telegram bot (@DOWNLOADFILEM1NX_BOT jaisa): owner
 - 👁 `/autosub on|off` — files wala subscribe button hide/unhide
 - 🛡 `/protect on|off` — forward/save block (protect_content)
 - ⏱ `/autodel <seconds>` — files kitne sec baad auto-delete (0 = off, default 600)
+- ⚠️ `/setnotice <text>` — auto-delete notice ka custom text (`{time}`/`{count}` placeholders, HTML allowed); `/setnotice default` = default text, `/setnotice off` = notice band
+- ☎️ `/setsupport @user1 @user2` — support team (Support buttons inko link karenge); `/setsupport off`
+- 👑 `/addadmin <id|@username>`, `/admins`, `/deladmin <id>` — admin management
 - 📣 `/broadcast` (kisi message ko reply karke) — sab users ko, progress ke saath
 - 📊 `/stats` — users, files, batches, clicks, uptime
 - 🚫 `/ban <uid>` / `/unban <uid>`, 🗑 `/delfile <id>`, 📥 `/getfile <id>`
